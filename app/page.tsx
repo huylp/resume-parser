@@ -4,10 +4,12 @@ import { ChangeEvent, useState } from "react";
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [fileText, setFileText] = useState("");
   const [parsedData, setParsedData] = useState("");
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setParsedData("");
+    setFileText("");
     const file = e.target.files?.[0];
 
     if (
@@ -30,12 +32,30 @@ export default function Home() {
 
         const data = await res.json();
 
-        setParsedData(JSON.stringify(data, null, 2));
+        if (!res.ok) return alert("Failed to parse the file!");
+
+        setFileText(data);
       };
     } else {
       setParsedData("");
       alert("Only pdf file formats are supported!");
     }
+  };
+
+  const handleUpload = async () => {
+    setIsExtracting(true);
+    const res = await fetch("/api/resume/extract", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: fileText }),
+    });
+    setIsExtracting(false);
+
+    const data = await res.json();
+
+    if (!res.ok) return alert("Failed to extract the file!");
+
+    setParsedData(JSON.stringify(data, null, 2));
   };
 
   return (
@@ -59,10 +79,18 @@ export default function Home() {
             className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none"
             id="file_input"
           />
+          <button
+            disabled={!fileText.length}
+            className="py-2 px-4 border border-gray-300 rounded-md hover:bg-gray-100 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleUpload}
+          >
+            Upload
+          </button>
         </div>
       </div>
 
-      {isLoading ? <p>Loading...</p> : <pre>{parsedData}</pre>}
+      {isLoading && <p>Parsing...</p>}
+      {isExtracting ? <p>Extracting...</p> : <pre>{parsedData}</pre>}
     </div>
   );
 }
